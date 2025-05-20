@@ -1,12 +1,15 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
+const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
 
 app.get("/api/data", async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.status(400).send("Missing url parameter");
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).json({ error: "Missing URL" });
+  }
 
   try {
     const browser = await puppeteer.launch({
@@ -15,18 +18,18 @@ app.get("/api/data", async (req, res) => {
     });
 
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "networkidle2" });
-    const html = await page.content();
-    await browser.close();
+    await page.goto(targetUrl, { waitUntil: "networkidle2" });
+    const content = await page.content();
 
-    res.set("Access-Control-Allow-Origin", "*"); // Enable CORS for frontend apps
-    res.send(html);
-  } catch (err) {
-    console.error("Puppeteer error:", err);
-    res.status(500).send("Puppeteer error: " + err.message);
+    await browser.close();
+    res.send(content);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
+// ✅ Listen on Render’s dynamic port
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
 });
