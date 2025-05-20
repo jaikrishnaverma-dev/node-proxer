@@ -1,23 +1,32 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
-const app = express();
+const express = require("express");
+const puppeteer = require("puppeteer");
 
-app.get('/api/data', async (req, res) => {
-  const targetUrl = req.query.url;
-  if (!targetUrl) return res.status(400).json({ error: 'Missing URL' });
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/api/data", async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).send("Missing url parameter");
 
   try {
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-    await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
 
-    const content = await page.content();
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle2" });
+    const html = await page.content();
     await browser.close();
 
-    res.send(content);
+    res.set("Access-Control-Allow-Origin", "*"); // Enable CORS for frontend apps
+    res.send(html);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Puppeteer error:", err);
+    res.status(500).send("Puppeteer error: " + err.message);
   }
 });
 
-app.listen(3000, () => console.log("Running on port 3000"));
+app.listen(PORT, () => {
+  console.log(`Proxy server running on port ${PORT}`);
+});
